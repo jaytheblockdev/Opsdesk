@@ -1,0 +1,431 @@
+import React, { useState, useEffect } from 'react';
+import { Calendar, Users, FolderKanban, CheckSquare, Plus, Search, Filter, MoreVertical, AlertCircle, Clock, TrendingUp } from 'lucide-react';
+
+// Mock data for demonstration
+const MOCK_USER = {
+  id: 1,
+  email: 'admin@opsdesk.io',
+  name: 'Admin User',
+  role: 'admin'
+};
+
+const MOCK_PROJECTS = [
+  {
+    id: 1,
+    name: 'Client Portal Redesign',
+    client: 'Acme Corp',
+    description: 'Complete overhaul of client-facing portal',
+    status: 'active',
+    startDate: '2026-01-01',
+    deadline: '2026-03-15',
+    memberCount: 4
+  },
+  {
+    id: 2,
+    name: 'Internal CRM Migration',
+    client: 'Internal',
+    description: 'Migrate from legacy CRM to new platform',
+    status: 'active',
+    startDate: '2025-12-15',
+    deadline: '2026-02-28',
+    memberCount: 3
+  },
+  {
+    id: 3,
+    name: 'Q4 Marketing Campaign',
+    client: 'TechStart Inc',
+    description: 'Digital marketing campaign for product launch',
+    status: 'completed',
+    startDate: '2025-10-01',
+    deadline: '2025-12-31',
+    memberCount: 5
+  }
+];
+
+const MOCK_TASKS = [
+  {
+    id: 1,
+    title: 'Design new dashboard layout',
+    description: 'Create wireframes and mockups',
+    projectId: 1,
+    projectName: 'Client Portal Redesign',
+    assigneeId: 2,
+    assigneeName: 'Sarah Chen',
+    priority: 'high',
+    status: 'in_progress',
+    dueDate: '2026-01-20'
+  },
+  {
+    id: 2,
+    title: 'Set up authentication flow',
+    description: 'Implement OAuth and session management',
+    projectId: 1,
+    projectName: 'Client Portal Redesign',
+    assigneeId: 3,
+    assigneeName: 'Mike Johnson',
+    priority: 'high',
+    status: 'in_progress',
+    dueDate: '2026-01-18'
+  },
+  {
+    id: 3,
+    title: 'Database schema design',
+    description: 'Design tables for new CRM',
+    projectId: 2,
+    projectName: 'Internal CRM Migration',
+    assigneeId: 1,
+    assigneeName: 'Admin User',
+    priority: 'medium',
+    status: 'todo',
+    dueDate: '2026-01-22'
+  },
+  {
+    id: 4,
+    title: 'Content review',
+    description: 'Review all marketing copy',
+    projectId: 3,
+    projectName: 'Q4 Marketing Campaign',
+    assigneeId: 4,
+    assigneeName: 'Emma Davis',
+    priority: 'low',
+    status: 'done',
+    dueDate: '2025-12-20'
+  }
+];
+
+const MOCK_TEAM = [
+  { id: 1, name: 'Admin User', email: 'admin@opsdesk.io', role: 'admin', taskCount: 3 },
+  { id: 2, name: 'Sarah Chen', email: 'sarah@opsdesk.io', role: 'member', taskCount: 5 },
+  { id: 3, name: 'Mike Johnson', email: 'mike@opsdesk.io', role: 'member', taskCount: 4 },
+  { id: 4, name: 'Emma Davis', email: 'emma@opsdesk.io', role: 'member', taskCount: 2 }
+];
+
+const MOCK_ACTIVITY = [
+  { id: 1, user: 'Sarah Chen', action: 'completed task', target: 'Design new dashboard layout', time: '2 hours ago' },
+  { id: 2, user: 'Mike Johnson', action: 'updated task', target: 'Set up authentication flow', time: '4 hours ago' },
+  { id: 3, user: 'Admin User', action: 'created project', target: 'Client Portal Redesign', time: '1 day ago' },
+  { id: 4, user: 'Emma Davis', action: 'commented on', target: 'Content review', time: '2 days ago' }
+];
+
+function OpsDeskDashboard() {
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [showNewTaskModal, setShowNewTaskModal] = useState(false);
+  const [taskFilter, setTaskFilter] = useState({ status: 'all', priority: 'all' });
+
+  const activeProjects = MOCK_PROJECTS.filter(p => p.status === 'active').length;
+  const tasksThisWeek = MOCK_TASKS.filter(t => {
+    const dueDate = new Date(t.dueDate);
+    const today = new Date();
+    const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return dueDate >= today && dueDate <= weekFromNow;
+  }).length;
+  const completedTasks = MOCK_TASKS.filter(t => t.status === 'done').length;
+
+  const filteredTasks = MOCK_TASKS.filter(task => {
+    if (taskFilter.status !== 'all' && task.status !== taskFilter.status) return false;
+    if (taskFilter.priority !== 'all' && task.priority !== taskFilter.priority) return false;
+    return true;
+  });
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Sidebar */}
+      <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200">
+        <div className="p-6">
+          <h1 className="text-xl font-semibold text-gray-900">OpsDesk</h1>
+          <p className="text-sm text-gray-500 mt-1">Operations Management</p>
+        </div>
+
+        <nav className="px-3">
+          <button
+            onClick={() => setCurrentView('dashboard')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium mb-1 ${
+              currentView === 'dashboard' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <TrendingUp size={18} />
+            Dashboard
+          </button>
+          <button
+            onClick={() => setCurrentView('projects')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium mb-1 ${
+              currentView === 'projects' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <FolderKanban size={18} />
+            Projects
+          </button>
+          <button
+            onClick={() => setCurrentView('tasks')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium mb-1 ${
+              currentView === 'tasks' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <CheckSquare size={18} />
+            Tasks
+          </button>
+          <button
+            onClick={() => setCurrentView('team')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium mb-1 ${
+              currentView === 'team' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <Users size={18} />
+            Team
+          </button>
+        </nav>
+
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600">
+              {MOCK_USER.name.charAt(0)}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900">{MOCK_USER.name}</p>
+              <p className="text-xs text-gray-500 capitalize">{MOCK_USER.role}</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="ml-64 p-8">
+        {currentView === 'dashboard' && (
+          <div>
+            <div className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900">Dashboard</h2>
+              <p className="text-gray-600 mt-1">Overview of your operations</p>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-3 gap-6 mb-8">
+              <div className="bg-white p-6 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <FolderKanban className="text-blue-600" size={24} />
+                  <span className="text-sm font-medium text-gray-500">Projects</span>
+                </div>
+                <p className="text-3xl font-semibold text-gray-900">{activeProjects}</p>
+                <p className="text-sm text-gray-600 mt-1">Active projects</p>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <Clock className="text-orange-600" size={24} />
+                  <span className="text-sm font-medium text-gray-500">This Week</span>
+                </div>
+                <p className="text-3xl font-semibold text-gray-900">{tasksThisWeek}</p>
+                <p className="text-sm text-gray-600 mt-1">Tasks due this week</p>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <CheckSquare className="text-green-600" size={24} />
+                  <span className="text-sm font-medium text-gray-500">Completed</span>
+                </div>
+                <p className="text-3xl font-semibold text-gray-900">{completedTasks}</p>
+                <p className="text-sm text-gray-600 mt-1">Tasks completed</p>
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="bg-white rounded-lg border border-gray-200">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+              </div>
+              <div className="divide-y divide-gray-200">
+                {MOCK_ACTIVITY.map(activity => (
+                  <div key={activity.id} className="p-6 flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-gray-600">
+                      {activity.user.charAt(0)}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900">
+                        <span className="font-medium">{activity.user}</span> {activity.action}{' '}
+                        <span className="font-medium">{activity.target}</span>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {currentView === 'projects' && (
+          <div>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900">Projects</h2>
+                <p className="text-gray-600 mt-1">Manage your projects and clients</p>
+              </div>
+              <button
+                onClick={() => setShowNewProjectModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+              >
+                <Plus size={18} />
+                New Project
+              </button>
+            </div>
+
+            <div className="grid gap-6">
+              {MOCK_PROJECTS.map(project => (
+                <div key={project.id} className="bg-white p-6 rounded-lg border border-gray-200">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900">{project.name}</h3>
+                      <p className="text-sm text-gray-600 mt-1">{project.client}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      project.status === 'active' ? 'bg-green-100 text-green-700' :
+                      project.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                      'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {project.status === 'active' ? 'Active' : project.status === 'completed' ? 'Completed' : 'On Hold'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">{project.description}</p>
+                  <div className="flex items-center gap-6 text-sm text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={16} />
+                      <span>{new Date(project.startDate).toLocaleDateString()} - {new Date(project.deadline).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users size={16} />
+                      <span>{project.memberCount} members</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {currentView === 'tasks' && (
+          <div>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900">Tasks</h2>
+                <p className="text-gray-600 mt-1">Manage and track task progress</p>
+              </div>
+              <button
+                onClick={() => setShowNewTaskModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+              >
+                <Plus size={18} />
+                New Task
+              </button>
+            </div>
+
+            {/* Filters */}
+            <div className="flex gap-4 mb-6">
+              <select
+                value={taskFilter.status}
+                onChange={(e) => setTaskFilter({...taskFilter, status: e.target.value})}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              >
+                <option value="all">All Status</option>
+                <option value="todo">To-Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="done">Done</option>
+              </select>
+              <select
+                value={taskFilter.priority}
+                onChange={(e) => setTaskFilter({...taskFilter, priority: e.target.value})}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              >
+                <option value="all">All Priority</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+
+            {/* Tasks List */}
+            <div className="bg-white rounded-lg border border-gray-200">
+              <div className="divide-y divide-gray-200">
+                {filteredTasks.map(task => (
+                  <div key={task.id} className="p-6">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-base font-semibold text-gray-900">{task.title}</h3>
+                        <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          task.priority === 'high' ? 'bg-red-100 text-red-700' :
+                          task.priority === 'medium' ? 'bg-orange-100 text-orange-700' :
+                          'bg-blue-100 text-blue-700'
+                        }`}>
+                          {task.priority}
+                        </span>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          task.status === 'done' ? 'bg-green-100 text-green-700' :
+                          task.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {task.status === 'todo' ? 'To-Do' : task.status === 'in_progress' ? 'In Progress' : 'Done'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6 text-sm text-gray-600">
+                      <span>{task.projectName}</span>
+                      <span>Assigned to {task.assigneeName}</span>
+                      <span className="flex items-center gap-1">
+                        <Calendar size={14} />
+                        Due {new Date(task.dueDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {currentView === 'team' && (
+          <div>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900">Team</h2>
+                <p className="text-gray-600 mt-1">Manage team members and permissions</p>
+              </div>
+              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                <Plus size={18} />
+                Invite Member
+              </button>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200">
+              <div className="divide-y divide-gray-200">
+                {MOCK_TEAM.map(member => (
+                  <div key={member.id} className="p-6 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600">
+                        {member.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{member.name}</p>
+                        <p className="text-sm text-gray-600">{member.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">{member.taskCount} tasks</p>
+                        <p className="text-xs text-gray-500 capitalize">{member.role}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+export default OpsDeskDashboard;
